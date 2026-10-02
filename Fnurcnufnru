@@ -1,0 +1,303 @@
+-- == Vdovin_dlc ==
+-- Вкладка Lifting (Автокликер + Быстрая анимация)
+-- Вкладка Visual (Фонки)
+
+local Players = game:GetService("Players")
+local SoundService = game:GetService("SoundService")
+local VirtualUser = game:GetService("VirtualUser")
+local LP = Players.LocalPlayer
+
+-- Защита от повторной загрузки
+if getgenv().Vdovin_Loaded then
+    pcall(function() getgenv().Vdovin_GUI:Destroy() end)
+end
+getgenv().Vdovin_Loaded = true
+
+getgenv().autoClick = false
+getgenv().fastLift = false
+getgenv().animSpeed = 3
+getgenv().currentSong = nil
+
+-- Создание GUI
+local gui = Instance.new("ScreenGui")
+gui.Name = "Vdovin_dlc"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.Parent = LP:WaitForChild("PlayerGui")
+getgenv().Vdovin_GUI = gui
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 260, 0, 320)
+frame.Position = UDim2.new(0.5, -130, 0.5, -160)
+frame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true
+frame.Parent = gui
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 10)
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 30)
+title.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+title.BorderSizePixel = 0
+title.Text = "Vdovin_dlc"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 15
+title.Parent = frame
+Instance.new("UICorner", title).CornerRadius = UDim.new(0, 10)
+
+-- Панель вкладок
+local tabBar = Instance.new("Frame")
+tabBar.Size = UDim2.new(1, -20, 0, 28)
+tabBar.Position = UDim2.new(0, 10, 0, 35)
+tabBar.BackgroundTransparency = 1
+tabBar.Parent = frame
+
+local tabLifting = Instance.new("TextButton")
+tabLifting.Size = UDim2.new(0.5, -3, 1, 0)
+tabLifting.Position = UDim2.new(0, 0, 0, 0)
+tabLifting.BackgroundColor3 = Color3.fromRGB(70, 70, 90)
+tabLifting.BorderSizePixel = 0
+tabLifting.Text = "Lifting"
+tabLifting.TextColor3 = Color3.fromRGB(255, 255, 255)
+tabLifting.Font = Enum.Font.Gotham
+tabLifting.TextSize = 12
+tabLifting.Parent = tabBar
+Instance.new("UICorner", tabLifting).CornerRadius = UDim.new(0, 5)
+
+local tabVisual = Instance.new("TextButton")
+tabVisual.Size = UDim2.new(0.5, -3, 1, 0)
+tabVisual.Position = UDim2.new(0.5, 0, 0, 0)
+tabVisual.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+tabVisual.BorderSizePixel = 0
+tabVisual.Text = "Visual"
+tabVisual.TextColor3 = Color3.fromRGB(200, 200, 200)
+tabVisual.Font = Enum.Font.Gotham
+tabVisual.TextSize = 12
+tabVisual.Parent = tabBar
+Instance.new("UICorner", tabVisual).CornerRadius = UDim.new(0, 5)
+
+-- Содержимое вкладки Lifting
+local liftContent = Instance.new("Frame")
+liftContent.Size = UDim2.new(1, -20, 1, -85)
+liftContent.Position = UDim2.new(0, 10, 0, 70)
+liftContent.BackgroundTransparency = 1
+liftContent.Parent = frame
+
+local clickBtn = Instance.new("TextButton")
+clickBtn.Size = UDim2.new(1, 0, 0, 40)
+clickBtn.Position = UDim2.new(0, 0, 0, 5)
+clickBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 75)
+clickBtn.BorderSizePixel = 0
+clickBtn.Text = "Автокликер: ВЫКЛ"
+clickBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+clickBtn.Font = Enum.Font.Gotham
+clickBtn.TextSize = 13
+clickBtn.Parent = liftContent
+Instance.new("UICorner", clickBtn).CornerRadius = UDim.new(0, 6)
+
+local fastBtn = Instance.new("TextButton")
+fastBtn.Size = UDim2.new(1, 0, 0, 40)
+fastBtn.Position = UDim2.new(0, 0, 0, 52)
+fastBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 75)
+fastBtn.BorderSizePixel = 0
+fastBtn.Text = "Быстрая анимация: ВЫКЛ"
+fastBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+fastBtn.Font = Enum.Font.Gotham
+fastBtn.TextSize = 13
+fastBtn.Parent = liftContent
+Instance.new("UICorner", fastBtn).CornerRadius = UDim.new(0, 6)
+
+-- Содержимое вкладки Visual
+local visualContent = Instance.new("Frame")
+visualContent.Size = UDim2.new(1, -20, 1, -85)
+visualContent.Position = UDim2.new(0, 10, 0, 70)
+visualContent.BackgroundTransparency = 1
+visualContent.Visible = false
+visualContent.Parent = frame
+
+local songs = {
+    {name = "Ela Desce Ela Sobe", id = "rbxassetid://130963391145438"},
+    {name = "Кис-кис — ЛБТД", id = "rbxassetid://100118851780339"},
+    {name = "SIUU PHONK", id = "rbxassetid://93316204367148"},
+    {name = "Violin Phonk", id = "rbxassetid://80159531756934"},
+    {name = "Night Drive Phonk", id = "rbxassetid://75764445212230"},
+    {name = "Drifting Phonk", id = "rbxassetid://138391671909650"},
+}
+
+local songY = 5
+for i, song in ipairs(songs) do
+    local sBtn = Instance.new("TextButton")
+    sBtn.Size = UDim2.new(1, 0, 0, 32)
+    sBtn.Position = UDim2.new(0, 0, 0, songY)
+    sBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 75)
+    sBtn.BorderSizePixel = 0
+    sBtn.Text = song.name
+    sBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    sBtn.Font = Enum.Font.Gotham
+    sBtn.TextSize = 12
+    sBtn.Parent = visualContent
+    Instance.new("UICorner", sBtn).CornerRadius = UDim.new(0, 6)
+
+    sBtn.MouseButton1Click:Connect(function()
+        if getgenv().currentSong then
+            pcall(function() getgenv().currentSong:Destroy() end)
+        end
+        local sound = Instance.new("Sound")
+        sound.SoundId = song.id
+        sound.Volume = 1
+        sound.Looped = true
+        sound.Parent = SoundService
+        sound:Play()
+        getgenv().currentSong = sound
+        print("[Vdovin_dlc] Играет: " .. song.name)
+    end)
+    songY = songY + 38
+end
+
+local stopBtn = Instance.new("TextButton")
+stopBtn.Size = UDim2.new(1, 0, 0, 32)
+stopBtn.Position = UDim2.new(0, 0, 0, songY)
+stopBtn.BackgroundColor3 = Color3.fromRGB(120, 40, 40)
+stopBtn.BorderSizePixel = 0
+stopBtn.Text = "Стоп музыка"
+stopBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+stopBtn.Font = Enum.Font.Gotham
+stopBtn.TextSize = 13
+stopBtn.Parent = visualContent
+Instance.new("UICorner", stopBtn).CornerRadius = UDim.new(0, 6)
+
+stopBtn.MouseButton1Click:Connect(function()
+    if getgenv().currentSong then
+        pcall(function() getgenv().currentSong:Destroy() end)
+        getgenv().currentSong = nil
+    end
+end)
+
+-- Внешняя кнопка открытия/закрытия
+local toggleBtn = Instance.new("TextButton")
+toggleBtn.Size = UDim2.new(0, 50, 0, 50)
+toggleBtn.Position = UDim2.new(0, 20, 0, 80)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+toggleBtn.BorderSizePixel = 0
+toggleBtn.Text = "M"
+toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleBtn.Font = Enum.Font.GothamBold
+toggleBtn.TextSize = 20
+toggleBtn.Active = true
+toggleBtn.Draggable = true
+toggleBtn.Parent = gui
+Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(1, 0)
+
+-- Логика автокликера
+task.spawn(function()
+    while task.wait(0.05) do
+        if getgenv().autoClick then
+            pcall(function()
+                VirtualUser:CaptureController()
+                VirtualUser:ClickButton1(Vector2.new(0, 0))
+            end)
+        end
+    end
+end)
+
+-- Логика быстрой анимации (без ходьбы, бега, прыжка)
+local ignoreIds = {
+    "rbxassetid://507777826",
+    "rbxassetid://507767714",
+    "rbxassetid://507765000",
+    "rbxassetid://507767968",
+    "rbxassetid://507784897",
+    "rbxassetid://507766666",
+    "rbxassetid://507766951",
+    "rbxassetid://507766388",
+}
+
+local function isIgnored(id)
+    if not id then return false end
+    for _, ignored in ipairs(ignoreIds) do
+        if id == ignored then return true end
+    end
+    return false
+end
+
+local function applyAnimSpeed()
+    local char = LP.Character
+    if not char then return end
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    if not humanoid then return end
+    local animator = humanoid:FindFirstChildOfClass("Animator")
+    if not animator then return end
+
+    for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+        local id = track.Animation and track.Animation.AnimationId
+        if not isIgnored(id) then
+            pcall(function()
+                track:AdjustSpeed(getgenv().fastLift and getgenv().animSpeed or 1)
+            end)
+        end
+    end
+end
+
+task.spawn(function()
+    while task.wait(0.2) do
+        if getgenv().fastLift then
+            applyAnimSpeed()
+        end
+    end
+end)
+
+-- Переключение вкладок
+tabLifting.MouseButton1Click:Connect(function()
+    liftContent.Visible = true
+    visualContent.Visible = false
+    tabLifting.BackgroundColor3 = Color3.fromRGB(70, 70, 90)
+    tabVisual.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+end)
+
+tabVisual.MouseButton1Click:Connect(function()
+    liftContent.Visible = false
+    visualContent.Visible = true
+    tabLifting.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+    tabVisual.BackgroundColor3 = Color3.fromRGB(70, 70, 90)
+end)
+
+-- Автокликер
+clickBtn.MouseButton1Click:Connect(function()
+    getgenv().autoClick = not getgenv().autoClick
+    clickBtn.Text = getgenv().autoClick and "Автокликер: ВКЛ" or "Автокликер: ВЫКЛ"
+    clickBtn.BackgroundColor3 = getgenv().autoClick and Color3.fromRGB(40, 120, 60) or Color3.fromRGB(60, 60, 75)
+end)
+
+-- Быстрая анимация
+fastBtn.MouseButton1Click:Connect(function()
+    getgenv().fastLift = not getgenv().fastLift
+    fastBtn.Text = getgenv().fastLift and "Быстрая анимация: ВКЛ" or "Быстрая анимация: ВЫКЛ"
+    fastBtn.BackgroundColor3 = getgenv().fastLift and Color3.fromRGB(40, 120, 60) or Color3.fromRGB(60, 60, 75)
+
+    if not getgenv().fastLift then
+        local char = LP.Character
+        if char then
+            local humanoid = char:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                local animator = humanoid:FindFirstChildOfClass("Animator")
+                if animator then
+                    for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+                        local id = track.Animation and track.Animation.AnimationId
+                        if not isIgnored(id) then
+                            pcall(function() track:AdjustSpeed(1) end)
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+-- Открытие/закрытие меню
+toggleBtn.MouseButton1Click:Connect(function()
+    frame.Visible = not frame.Visible
+end)
+
+print("[Vdovin_dlc] Загружен. Lifting + Visual (фонки)")
